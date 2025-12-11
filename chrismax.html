@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>給親愛的聖誕倒數日曆 ❤️</title>
+    <style>
+        /* --- 1. 整體風格設定 (聖誕風) --- */
+        body {
+            background: linear-gradient(135deg, #165b33 0%, #0b381e 100%);
+            color: white;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            color: #f8b229;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        p.subtitle {
+            color: #e0e0e0;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        /* --- 2. 日曆格子佈局 --- */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 15px;
+            max-width: 800px;
+            width: 100%;
+            padding-bottom: 50px;
+        }
+
+        .day-box {
+            background-color: #bb2528; /* 聖誕紅 */
+            border-radius: 10px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s, background 0.3s;
+            position: relative;
+            border: 2px solid #f8b229;
+        }
+
+        .day-box:hover {
+            transform: scale(1.05);
+            background-color: #d42e32;
+        }
+
+        /*鎖住的樣式 (未來日期)*/
+        .day-box.locked {
+            background-color: #2c3e50;
+            border-color: #7f8c8d;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        /*已開啟的樣式*/
+        .day-box.opened {
+            background-color: #1a4d2e; /* 深綠 */
+            opacity: 0.5;
+        }
+
+        /* --- 3. 彈出視窗 (Modal) --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-content {
+            background: #fff;
+            color: #333;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 90%;
+            width: 400px;
+            text-align: center;
+            border: 5px solid #bb2528;
+            position: relative;
+            transform: scale(0.7);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-date {
+            font-size: 1.2em;
+            color: #bb2528;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .modal-message {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            white-space: pre-wrap; /* 保留換行 */
+        }
+
+        .close-btn {
+            background: #165b33;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        /* 雪花背景 */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            color: #fff;
+            user-select: none;
+            z-index: 0;
+            pointer-events: none;
+            animation-name: fall;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+        }
+
+        @keyframes fall {
+            to { transform: translateY(105vh); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🎄 Merry Christmas My Love 🎄</h1>
+    <p class="subtitle">每天打開一則心意，直到聖誕節來臨...</p>
+
+    <div class="calendar-grid" id="calendar"></div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content">
+            <div class="modal-date" id="modalDate">12月1日</div>
+            <div class="modal-message" id="modalMessage">訊息內容...</div>
+            <button class="close-btn" onclick="closeModal()">收到心意 ❤️</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 設定區：給另一半的 25 句情話 (純語錄版) ---
+        const surprises = [
+            "12/1：親愛的，聖誕月快樂！🎄\n這是屬於我們的倒數開始。",
+            "12/2：今天想告訴你，\n你的笑容是我每天動力的來源。",
+            "12/3：天冷了，記得多穿一件外套，\n不然我會心疼的。",
+            "12/4：今天工作辛苦了，\n晚上早點休息喔。🌙",
+            "12/5：回想一下我們第一次見面，\n那時候我就覺得你很特別。",
+            "12/6：想吃什麼好吃的嗎？\n週末我們一起去吃！🍴",
+            "12/7：這是一條語音訊息(假裝的)：\n「我愛你！」🔊",
+            "12/8：你認真做事的樣子，\n真的超級迷人。",
+            "12/9：今天沒什麼特別的事，\n就是特別想你。",
+            "12/10：這張卡片背後藏著一個擁抱，\n見面時記得領取！🤗",
+            "12/11：不管外面世界多吵雜，\n你身邊永遠有我。",
+            "12/12：今天想多聽聽你的聲音，\n有空聊聊天嗎？",
+            "12/13：準備好迎接聖誕節了嗎？\n我準備好迎接你了。",
+            "12/14：今天是擁抱情人節，\n讓我抱久一點好嗎？",
+            "12/15：距離聖誕節還有10天，\n但愛你沒有期限。",
+            "12/16：能遇見你，\n就是最美好的事。",
+            "12/17：想和你一起去看聖誕樹，\n雖然你比聖誕樹好看。🎄",
+            "12/18：不要太累了，\n我不准你累壞我的寶貝。",
+            "12/19：今天為你點播一首聖誕歌，\n哼給你聽～🎵",
+            "12/20：倒數5天！\n期待和你一起過節。",
+            "12/21：聖誕節的氣氛越來越濃，\n有你在身邊真好。",
+            "12/22：天氣越冷，\n我們就要黏得越緊。",
+            "12/23：平安夜的前夕，\n願你今晚做個好夢。",
+            "12/24：平安夜快樂！🍎\n今晚要一直牽著手喔。",
+            "12/25：聖誕快樂！🎅\n謝謝你在我身邊，我愛你！"
+        ];
+
+        // --- 程式邏輯區 ---
+
+        const calendar = document.getElementById('calendar');
+        const modal = document.getElementById('modal');
+        const modalDate = document.getElementById('modalDate');
+        const modalMessage = document.getElementById('modalMessage');
+
+        // 取得今天的日期
+        const today = new Date();
+        const currentMonth = today.getMonth() + 1; 
+        const currentDay = today.getDate();
+
+        // ★★★ 測試區 ★★★
+        // 若要測試特定日期，請把下面這行 // 拿掉並修改日期
+        // const currentMonth = 12; const currentDay = 21; 
+
+        // 產生 25 個格子
+        for (let i = 1; i <= 25; i++) {
+            const dayBox = document.createElement('div');
+            dayBox.classList.add('day-box');
+            dayBox.innerText = i; 
+
+            // 判斷日期狀態
+            const isFuture = (currentMonth !== 12) || (i > currentDay);
+            
+            if (isFuture) {
+                dayBox.classList.add('locked');
+                dayBox.innerHTML = `🔒<br><span style='font-size:0.5em'>${i}</span>`;
+                dayBox.onclick = () => alert(`還沒到 ${i} 號喔，這一天有專屬的話要對你說！🙅‍♂️`);
+            } else {
+                dayBox.onclick = () => openSurprise(i);
+            }
+
+            calendar.appendChild(dayBox);
+        }
+
+        function openSurprise(day) {
+            modalDate.innerText = `🎄 12月${day}日`;
+            modalMessage.innerText = surprises[day - 1];
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                modal.classList.add('show');
+            }, 10);
+            
+            const boxes = document.querySelectorAll('.day-box');
+            if(boxes[day-1]) boxes[day-1].classList.add('opened');
+        }
+
+        function closeModal() {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 300);
+        }
+
+        // --- 自動彈出今日驚喜 ---
+        window.onload = function() {
+            if (currentMonth === 12 && currentDay >= 1 && currentDay <= 25) {
+                setTimeout(() => {
+                    openSurprise(currentDay);
+                }, 800);
+            }
+        };
+
+        // --- 雪花特效 ---
+        function createSnowflake() {
+            const snow = document.createElement('div');
+            snow.classList.add('snowflake');
+            snow.innerText = '❄';
+            snow.style.left = Math.random() * 100 + 'vw';
+            snow.style.animationDuration = Math.random() * 3 + 2 + 's';
+            snow.style.opacity = Math.random();
+            snow.style.fontSize = Math.random() * 10 + 10 + 'px';
+            
+            document.body.appendChild(snow);
+            
+            setTimeout(() => {
+                snow.remove();
+            }, 5000);
+        }
+        setInterval(createSnowflake, 200);
+
+    </script>
+</body>
+</html>
